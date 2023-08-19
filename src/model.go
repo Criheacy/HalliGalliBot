@@ -7,8 +7,6 @@ import (
 type OpType int8
 type IntentType string
 
-const OpLiteral = "op"
-
 const (
 	Dispatch OpType = iota
 	Heartbeat
@@ -26,7 +24,8 @@ const (
 )
 
 const (
-	Ready IntentType = "READY"
+	Ready         IntentType = "READY"
+	MessageCreate IntentType = "MESSAGE_CREATE"
 )
 
 type MessageModel struct {

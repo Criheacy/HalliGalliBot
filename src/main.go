@@ -17,18 +17,17 @@ func main() {
 		log.Panicln("ERROR unable to get websocket url", err)
 	}
 
+	// relay the interrupt message from the system to the interrupt channel
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
 	log.Printf("connecting to %s", url)
-
 	connection, _, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {
 		log.Panicln("ERROR connecting to :", err)
 	}
 	defer func(conn *websocket.Conn) {
-		err := conn.Close()
-		if err != nil {
+		if err := conn.Close(); err != nil {
 			log.Panicln("close:", err)
 		}
 	}(connection)
@@ -63,30 +62,7 @@ func main() {
 
 			switch raw.Op {
 			case Hello:
-				helloResp, err := ParseHelloResponseBody(raw.Body)
-				if err != nil {
-					log.Println("ERROR parsing response body:", err)
-					continue
-				}
-				// set heartbeat ticker
-				ticker = time.NewTicker(time.Duration(helloResp.HeartbeatInterval) * time.Millisecond)
-
-				// send identify message
-				identifyReq := IdentifyBody{
-					Token:      token.GetString(),
-					Intents:    Intents,
-					Shard:      [2]int{0, 1},
-					Properties: map[string]string{},
-				}
-				req, err := BuildRequest(Identify, identifyReq).GetString()
-				if err != nil {
-					log.Println("ERROR building request:", err)
-					continue
-				}
-				log.Printf("authenticate: %s", req)
-				err = connection.WriteMessage(websocket.TextMessage, req)
-				if err != nil {
-					log.Println("ERROR sending message:", err)
+				if ticker, err = HandleHelloResponse(connection, raw.Body, token); err != nil {
 					continue
 				}
 			case HeartbeatAck:
@@ -95,13 +71,9 @@ func main() {
 				log.Printf("intent: %s", raw.Intent)
 				switch raw.Intent {
 				case Ready:
-					readyResp, err := ParseReadyMessageResponseBody(raw.Body)
-					if err != nil {
-						log.Println("ERROR parsing response body:", err)
-						return
+					if err := HandleReadyMessageResponse(raw.Body); err != nil {
+						continue
 					}
-					log.Printf("logged in as user %s %s, session id: %s",
-						readyResp.User.UserName, readyResp.User.Id, readyResp.SessionId)
 				}
 			}
 		}

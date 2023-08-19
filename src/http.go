@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-func GetWebSocketUrl(token *Token) (string, error) {
+func GetWebSocketUrl(token Token) (string, error) {
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", Url("/gateway"), nil)
 

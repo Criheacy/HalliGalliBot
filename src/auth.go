@@ -14,7 +14,7 @@ type Token struct {
 	AccessToken string
 }
 
-func (token *Token) GetString() string {
+func (token Token) GetString() string {
 	return fmt.Sprintf("%s %v.%s", "Bot", token.AppID, token.AccessToken)
 }
 
@@ -26,7 +26,7 @@ func GetConfigPath(name string) string {
 	return ""
 }
 
-func LoadFromConfig(file string) *Token {
+func LoadFromConfig(file string) Token {
 	var conf struct {
 		AppID uint64 `yaml:"appid"`
 		Token string `yaml:"token"`
@@ -39,7 +39,7 @@ func LoadFromConfig(file string) *Token {
 		log.Fatalf("parse config failed, err: %v", err)
 	}
 
-	return &Token{
+	return Token{
 		AppID:       conf.AppID,
 		AccessToken: conf.Token,
 	}
