@@ -79,11 +79,20 @@ func ParseHelloResponseBody(source json.RawMessage) (HelloBody, error) {
 	return body, nil
 }
 
-func ParseReadyMessageResponseBody(source json.RawMessage) (ReadyMessageBody, error) {
-	var body ReadyMessageBody
+func ParseReadyResponseBody(source json.RawMessage) (ReadyBody, error) {
+	var body ReadyBody
 	err := json.Unmarshal(source, &body)
 	if err != nil {
-		return ReadyMessageBody{}, err
+		return ReadyBody{}, err
+	}
+	return body, nil
+}
+
+func ParseMessageCreateResponseBody(source json.RawMessage) (MessageCreateBody, error) {
+	var body MessageCreateBody
+	err := json.Unmarshal(source, &body)
+	if err != nil {
+		return MessageCreateBody{}, err
 	}
 	return body, nil
 }
@@ -96,15 +105,44 @@ type HeartbeatBody struct {
 	LastMessageId string `json:"s"`
 }
 
-type ReadyMessageBody struct {
-	Version   int              `json:"version"`
-	SessionId string           `json:"session_id"`
-	User      ReadyMessageUser `json:"user"`
-	Shard     [2]int           `json:"shard"`
+type ReadyBody struct {
+	Version   int    `json:"version"`
+	SessionId string `json:"session_id"`
+	User      User   `json:"user"`
+	Shard     [2]int `json:"shard"`
 }
 
-type ReadyMessageUser struct {
+type User struct {
+	Avatar   string `json:"avatar"`
 	Id       string `json:"id"`
 	UserName string `json:"username"`
 	Bot      bool   `json:"bot"`
+}
+
+type Member struct {
+	JoinedAt string   `json:"joined_at"`
+	NickName string   `json:"nick"`
+	Roles    []string `json:"roles"`
+}
+
+type MessageCreateBody struct {
+	Author       User   `json:"author"`
+	ChannelId    string `json:"channel_id"`
+	Content      string `json:"content"`
+	GuildId      string `json:"guild_id"`
+	Id           string `json:"id"`
+	Member       Member `json:"member"`
+	Mentions     []User `json:"mentions"`
+	Seq          int    `json:"seq"`
+	SeqInChannel string `json:"seq_in_channel"`
+	Timestamp    string `json:"timestamp"`
+}
+
+type GatewayBody struct {
+	Url string `json:"url"`
+}
+
+type MessageSendBody struct {
+	Content        string `json:"content"`
+	ReplyMessageId string `json:"msg_id"`
 }

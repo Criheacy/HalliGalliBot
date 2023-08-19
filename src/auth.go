@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"gopkg.in/yaml.v3"
-	"log"
 	"os"
 	"path"
 	"runtime"
@@ -26,21 +25,22 @@ func GetConfigPath(name string) string {
 	return ""
 }
 
-func LoadFromConfig(file string) Token {
+func LoadTokenFromConfig(file string) error {
 	var conf struct {
 		AppID uint64 `yaml:"appid"`
 		Token string `yaml:"token"`
 	}
 	content, err := os.ReadFile(GetConfigPath(file))
 	if err != nil {
-		log.Fatalf("read token from file failed, err: %v", err)
+		return err
 	}
 	if err = yaml.Unmarshal(content, &conf); err != nil {
-		log.Fatalf("parse config failed, err: %v", err)
+		return err
 	}
 
-	return Token{
+	GetContext().Token = Token{
 		AppID:       conf.AppID,
 		AccessToken: conf.Token,
 	}
+	return nil
 }

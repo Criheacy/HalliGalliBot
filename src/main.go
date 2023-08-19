@@ -10,27 +10,27 @@ import (
 )
 
 func main() {
-	token := LoadFromConfig("./config.yaml")
-
-	url, err := GetWebSocketUrl(token)
-	if err != nil {
-		log.Panicln("ERROR unable to get websocket url", err)
-	}
-
 	// relay the interrupt message from the system to the interrupt channel
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
-	log.Printf("connecting to %s", url)
-	connection, _, err := websocket.DefaultDialer.Dial(url, nil)
+	err := LoadTokenFromConfig("./config.yaml")
 	if err != nil {
-		log.Panicln("ERROR connecting to :", err)
+		log.Panicln("ERROR load token from config", err)
+	}
+
+	err = ConnectToWebsocketServer()
+	if err != nil {
+		log.Panicln("ERROR connect to websocket server", err)
 	}
 	defer func(conn *websocket.Conn) {
+		if conn == nil {
+			return
+		}
 		if err := conn.Close(); err != nil {
 			log.Panicln("close:", err)
 		}
-	}(connection)
+	}(GetContext().Connection)
 
 	ticker := time.NewTicker(time.Duration(DefaultHeartbeatIntervalMillis) * time.Millisecond)
 	defer func() {
@@ -45,7 +45,7 @@ func main() {
 	go func() {
 		defer close(done)
 		for {
-			_, message, err := connection.ReadMessage()
+			_, message, err := GetContext().Connection.ReadMessage()
 			if err != nil {
 				log.Println("ERROR reading message:", err)
 				continue
@@ -62,7 +62,7 @@ func main() {
 
 			switch raw.Op {
 			case Hello:
-				if ticker, err = HandleHelloResponse(connection, raw.Body, token); err != nil {
+				if ticker, err = HandleHelloResponse(raw.Body); err != nil {
 					continue
 				}
 			case HeartbeatAck:
@@ -71,7 +71,11 @@ func main() {
 				log.Printf("intent: %s", raw.Intent)
 				switch raw.Intent {
 				case Ready:
-					if err := HandleReadyMessageResponse(raw.Body); err != nil {
+					if err := HandleReadyResponse(raw.Body); err != nil {
+						continue
+					}
+				case MessageCreate:
+					if err := HandleMessageCreateResponse(raw.Body); err != nil {
 						continue
 					}
 				}
@@ -93,7 +97,7 @@ func main() {
 				log.Println("ERROR building request:", err)
 				continue
 			}
-			err = connection.WriteMessage(websocket.TextMessage, request)
+			err = GetContext().Connection.WriteMessage(websocket.TextMessage, request)
 			if err != nil {
 				log.Println("ERROR sending message:", err)
 				continue
@@ -101,7 +105,7 @@ func main() {
 			log.Printf("heartbeat, last message id: %d", lastMessageId)
 		case <-interrupt:
 			log.Println("interrupted by user event")
-			err := connection.WriteMessage(websocket.CloseMessage,
+			err := GetContext().Connection.WriteMessage(websocket.CloseMessage,
 				websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 			if err != nil {
 				log.Println("ERROR sending message:", err)

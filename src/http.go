@@ -1,32 +1,62 @@
 package main
 
 import (
-	"encoding/json"
+	"bytes"
 	"io"
 	"net/http"
 )
 
-func GetWebSocketUrl(token Token) (string, error) {
+func HttpGet(endpoint string) ([]byte, error) {
 	client := &http.Client{}
-	req, err := http.NewRequest("GET", Url("/gateway"), nil)
+	req, err := http.NewRequest("GET", Url(endpoint), nil)
+	if err != nil {
+		return nil, err
+	}
 
+	token := GetContext().Token
 	req.Header.Set("Authorization", token.GetString())
-	res, err := client.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	body, err := io.ReadAll(res.Body)
-	err = res.Body.Close()
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	var bodyParam map[string]string
-	err = json.Unmarshal(body, &bodyParam)
+	err = resp.Body.Close()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return bodyParam["url"], nil
+	return body, nil
+}
+
+func HttpPost(endpoint string, reqBody []byte) ([]byte, error) {
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", Url(endpoint), bytes.NewReader(reqBody))
+	if err != nil {
+		return nil, err
+	}
+
+	token := GetContext().Token
+	req.Header.Set("Authorization", token.GetString())
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	err = resp.Body.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	return respBody, nil
 }
