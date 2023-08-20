@@ -145,4 +145,5 @@ type GatewayBody struct {
 type MessageSendBody struct {
 	Content        string `json:"content"`
 	ReplyMessageId string `json:"msg_id"`
+	ImageUrl       string `json:"image"`
 }

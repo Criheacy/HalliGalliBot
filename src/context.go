@@ -11,6 +11,7 @@ var lock = &sync.Mutex{}
 type Context struct {
 	User       User
 	Token      Token
+	Asset      Asset
 	Connection *websocket.Conn
 }
 

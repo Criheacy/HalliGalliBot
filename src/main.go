@@ -14,7 +14,13 @@ func main() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
-	err := LoadTokenFromConfig("./config.yaml")
+	err := LoadAssets()
+	if err != nil {
+		log.Panicln("ERROR loading assets", err)
+	}
+	log.Printf("assets: %+v", GetContext().Asset)
+
+	err = LoadTokenFromConfig()
 	if err != nil {
 		log.Panicln("ERROR load token from config", err)
 	}

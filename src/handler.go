@@ -70,8 +70,7 @@ func HandleMessageCreateResponse(body json.RawMessage) error {
 
 	url := fmt.Sprintf("/channels/%s/messages", messageCreateBody.ChannelId)
 	reqBody := MessageSendBody{
-		Content:        "喵~",
-		ReplyMessageId: messageCreateBody.Id,
+		ImageUrl: "https://p.sda1.dev/12/502e25ab8a81b2997bbe23c42f756740/Apple Watch 45mm - 1 _2_.png",
 	}
 	reqBodyRaw, err := json.Marshal(reqBody)
 	if err != nil {
