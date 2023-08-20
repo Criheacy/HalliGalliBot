@@ -2,10 +2,15 @@ package main
 
 import "time"
 
-type GameEvent = int
+type GameEventType = int
+
+type GameEvent struct {
+	EventType GameEventType
+	Param     any
+}
 
 const (
-	Initiate GameEvent = iota
+	Initiate GameEventType = iota
 	Start
 	RingTheBell
 	Continue
@@ -28,7 +33,8 @@ const (
 )
 
 type RoundStatus struct {
-	Win           bool
+	IsWin         bool
+	Player        User
 	AnimalVariant int
 	FruitVariant  int
 }
@@ -50,21 +56,22 @@ func RevealCardAndSend(game Game, messageChannel chan GameMessage) {
 }
 
 func TerminateGame(game Game, messageChannel chan GameMessage) {
-	card := game.RevealNextCard()
+	game.State = Closed
 	messageChannel <- GameMessage{
-		MessageType: CardRevealed,
-		Param:       card,
+		MessageType: GameTerminated,
+		Param:       nil,
 	}
 }
 
 func GameLoop(eventChannel chan GameEvent, messageChannel chan GameMessage) {
 	game := Game{}
+	game.Init()
 	ticker := time.NewTicker(game.Rule.DealInterval)
 	ticker.Stop()
 	for {
 		select {
 		case event := <-eventChannel:
-			switch event {
+			switch event.EventType {
 			case Initiate:
 				if game.State == Closed || game.State == WaitingForStart {
 					InitiateGame(game, messageChannel)
@@ -82,7 +89,8 @@ func GameLoop(eventChannel chan GameEvent, messageChannel chan GameMessage) {
 					game.State = Paused
 					isWin, animalVariant, fruitVariant := game.WinCheck()
 					roundStatus := RoundStatus{
-						Win:           isWin,
+						IsWin:         isWin,
+						Player:        event.Param.(User),
 						AnimalVariant: animalVariant,
 						FruitVariant:  fruitVariant,
 					}

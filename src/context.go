@@ -12,6 +12,7 @@ type Context struct {
 	User       User
 	Token      Token
 	Asset      Asset
+	ChannelId  string
 	Connection *websocket.Conn
 }
 

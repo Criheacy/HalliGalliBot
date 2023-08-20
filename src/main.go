@@ -47,6 +47,12 @@ func main() {
 
 	lastMessageId := DefaultLastMessageId
 
+	eventChannel := make(chan GameEvent, 8)
+	messageChannel := make(chan GameMessage, 8)
+
+	go GameLoop(eventChannel, messageChannel)
+	go HandleGameMessage(messageChannel)
+
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -78,10 +84,12 @@ func main() {
 				switch raw.Intent {
 				case Ready:
 					if err := HandleReadyResponse(raw.Body); err != nil {
+						log.Println("ERROR handle ready response", err)
 						continue
 					}
 				case MessageCreate:
-					if err := HandleMessageCreateResponse(raw.Body); err != nil {
+					if err := HandleMessageCreateResponse(raw.Body, eventChannel); err != nil {
+						log.Println("ERROR handle message", err)
 						continue
 					}
 				}
