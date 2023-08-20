@@ -81,6 +81,7 @@ func HandleMessageCreateResponse(body json.RawMessage, eventChannel chan GameEve
 		return nil
 	}
 
+	GetContext().ReplyMessageId = messageCreateBody.Id
 	if strings.Contains(messageCreateBody.Content, "game") {
 		eventChannel <- GameEvent{
 			EventType: Initiate,
@@ -108,23 +109,6 @@ func HandleMessageCreateResponse(body json.RawMessage, eventChannel chan GameEve
 			Param:     messageCreateBody.Author,
 		}
 	}
-
-	url := fmt.Sprintf("/channels/%s/messages", messageCreateBody.ChannelId)
-	reqBody := MessageSendBody{
-		ImageUrl: "https://p.sda1.dev/12/502e25ab8a81b2997bbe23c42f756740/Apple Watch 45mm - 1 _2_.png",
-	}
-	reqBodyRaw, err := json.Marshal(reqBody)
-	if err != nil {
-		return err
-	}
-	log.Printf("debug log: %s", reqBodyRaw)
-
-	respRaw, err := HttpPost(url, reqBodyRaw)
-	if err != nil {
-		return err
-	}
-
-	log.Printf("sending message response: %s", string(respRaw))
 	return nil
 }
 
@@ -149,17 +133,15 @@ func HandleGameMessage(messageChannel chan GameMessage) {
 				}
 			case PlayerWin:
 				roundStatus := message.Param.(RoundStatus)
-				atPlayer := fmt.Sprintf("<@!%s>", roundStatus.Player.Id)
+				mentionPlayer := fmt.Sprintf("<@!%s>", roundStatus.Player.Id)
 				var reason string
-				if roundStatus.FruitVariant != -1 {
-					name := GetContext().Asset.Meta.Fruits[roundStatus.FruitVariant].Name
-					reason = fmt.Sprintf(" 5 个%s", name)
-				} else if roundStatus.AnimalVariant != -1 {
-					name := GetContext().Asset.Meta.Animals[roundStatus.AnimalVariant].Name
-					reason = fmt.Sprintf("%s", name)
+				if roundStatus.FruitName != "" {
+					reason = fmt.Sprintf(" 5 个%s", roundStatus.FruitName)
+				} else if roundStatus.AnimalName != "" {
+					reason = fmt.Sprintf("%s", roundStatus.AnimalName)
 				}
 				messageBody = MessageSendBody{
-					Content: "恭喜" + atPlayer + roundStatus.Player.UserName + "赢得了这一轮！\n" +
+					Content: "恭喜" + mentionPlayer + "赢得了这一轮！\n" +
 						"（最后五张牌中有" + reason + "）\n" +
 						"准备好清空桌面！@我 发送 continue 开始新的一轮！",
 				}
@@ -172,10 +154,11 @@ func HandleGameMessage(messageChannel chan GameMessage) {
 				}
 			case GameTerminated:
 				messageBody = MessageSendBody{
-					Content: "游戏告一段落啦！想要再来一句，请随时 @我 发送 game 哦！",
+					Content: "游戏告一段落啦！想要再来一局，请随时 @我 发送 game 哦！",
 				}
 			}
-			err := SendMessage(messageBody)
+			messageBody.ReplyMessageId = GetContext().ReplyMessageId
+			err := SendMessage(&messageBody)
 			if err != nil {
 				log.Println("ERROR sending message", err)
 				continue

@@ -1,6 +1,9 @@
 package main
 
-import "time"
+import (
+	"log"
+	"time"
+)
 
 type GameEventType = int
 
@@ -33,13 +36,13 @@ const (
 )
 
 type RoundStatus struct {
-	IsWin         bool
-	Player        User
-	AnimalVariant int
-	FruitVariant  int
+	IsWin      bool
+	Player     User
+	AnimalName string
+	FruitName  string
 }
 
-func InitiateGame(game Game, messageChannel chan GameMessage) {
+func InitiateGame(game *Game, messageChannel chan GameMessage) {
 	messageChannel <- GameMessage{
 		MessageType: ShowGameRule,
 		Param:       nil,
@@ -47,15 +50,16 @@ func InitiateGame(game Game, messageChannel chan GameMessage) {
 	game.State = WaitingForStart
 }
 
-func RevealCardAndSend(game Game, messageChannel chan GameMessage) {
+func RevealCardAndSend(game *Game, messageChannel chan GameMessage) {
 	card := game.RevealNextCard()
+	log.Printf("card revealed: %+v", card)
 	messageChannel <- GameMessage{
 		MessageType: CardRevealed,
 		Param:       card,
 	}
 }
 
-func TerminateGame(game Game, messageChannel chan GameMessage) {
+func TerminateGame(game *Game, messageChannel chan GameMessage) {
 	game.State = Closed
 	messageChannel <- GameMessage{
 		MessageType: GameTerminated,
@@ -64,7 +68,7 @@ func TerminateGame(game Game, messageChannel chan GameMessage) {
 }
 
 func GameLoop(eventChannel chan GameEvent, messageChannel chan GameMessage) {
-	game := Game{}
+	game := &Game{}
 	game.Init()
 	ticker := time.NewTicker(game.Rule.DealInterval)
 	ticker.Stop()
@@ -87,12 +91,12 @@ func GameLoop(eventChannel chan GameEvent, messageChannel chan GameMessage) {
 				if game.State == Running {
 					ticker.Stop()
 					game.State = Paused
-					isWin, animalVariant, fruitVariant := game.WinCheck()
+					isWin, animalName, fruitName := game.WinCheck()
 					roundStatus := RoundStatus{
-						IsWin:         isWin,
-						Player:        event.Param.(User),
-						AnimalVariant: animalVariant,
-						FruitVariant:  fruitVariant,
+						IsWin:      isWin,
+						Player:     event.Param.(User),
+						AnimalName: animalName,
+						FruitName:  fruitName,
 					}
 					if isWin {
 						messageChannel <- GameMessage{

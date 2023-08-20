@@ -18,7 +18,6 @@ func main() {
 	if err != nil {
 		log.Panicln("ERROR loading assets", err)
 	}
-	log.Printf("assets: %+v", GetContext().Asset)
 
 	err = LoadTokenFromConfig()
 	if err != nil {
@@ -80,7 +79,6 @@ func main() {
 			case HeartbeatAck:
 				log.Printf("heartbeat acknowledged")
 			case Dispatch:
-				log.Printf("intent: %s", raw.Intent)
 				switch raw.Intent {
 				case Ready:
 					if err := HandleReadyResponse(raw.Body); err != nil {

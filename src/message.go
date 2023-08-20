@@ -6,7 +6,7 @@ import (
 	"log"
 )
 
-func SendMessage(body MessageSendBody) error {
+func SendMessage(body *MessageSendBody) error {
 	url := fmt.Sprintf("/channels/%s/messages", GetContext().ChannelId)
 	bodyRaw, err := json.Marshal(body)
 	if err != nil {

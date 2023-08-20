@@ -9,11 +9,12 @@ import (
 var lock = &sync.Mutex{}
 
 type Context struct {
-	User       User
-	Token      Token
-	Asset      Asset
-	ChannelId  string
-	Connection *websocket.Conn
+	User           User
+	Token          Token
+	Asset          Asset
+	ChannelId      string
+	ReplyMessageId string
+	Connection     *websocket.Conn
 }
 
 var instance *Context

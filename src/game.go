@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"math/rand"
 	"os"
@@ -43,7 +44,7 @@ type Asset struct {
 
 type AssetVariant struct {
 	Name    string `json:"name"`
-	Variant string `json:"variant"`
+	Variant int    `json:"variant"`
 }
 
 type AssetMeta struct {
@@ -86,7 +87,7 @@ func (game *Game) Init() {
 	game.Rule = GameRule{
 		ValidCardNumber:  5,
 		FruitNumberToWin: 5,
-		DealInterval:     10 * time.Second,
+		DealInterval:     7 * time.Second,
 	}
 	game.State = Closed
 	game.Deck = make([]Card, len(GetContext().Asset.Cards))
@@ -117,38 +118,75 @@ func (game *Game) RevealNextCard() Card {
 	return card
 }
 
-// WinCheck returns (isWin, animalVariant(defaults -1), fruitVariant(defaults -1))
-func (game *Game) WinCheck() (bool, int, int) {
+type Counter struct {
+	Variant int
+	Count   int
+}
+
+func GetFruitCounters() []Counter {
+	result := make([]Counter, len(GetContext().Asset.Meta.Fruits))
+	for index, fruit := range GetContext().Asset.Meta.Fruits {
+		result[index].Variant = fruit.Variant
+		result[index].Count = 0
+	}
+	return result
+}
+
+func CountFruit(variant int, number int, fruitCounters *[]Counter) {
+	for _, fruitCounter := range *fruitCounters {
+		if fruitCounter.Variant == variant {
+			fruitCounter.Count += number
+		}
+	}
+}
+
+// WinCheck returns (isWin, animalName, fruitName)
+func (game *Game) WinCheck() (bool, string, string) {
 	sliceFrom := maxInt(0, len(game.RevealedCards)-game.Rule.ValidCardNumber)
 	validCards := game.RevealedCards[sliceFrom:]
 
-	log.Printf("valid cards: %+v", validCards)
+	var cardLog string
+	for _, card := range validCards {
+		if card.Type == Animal {
+			cardLog += fmt.Sprintf("[%s] ", GetAnimalNameByVariant(card.Variant))
+		} else {
+			for _, element := range card.Elements {
+				cardLog += fmt.Sprintf("[%s x%d] ", GetFruitNameByVariant(element.Variant), element.Number)
+			}
+		}
+	}
+	log.Printf("valid cards: %+v", cardLog)
 
 	hasAnimal := false
 	animalVariant := -1
-	fruitCount := make([]int, len(GetContext().Asset.Meta.Fruits))
+	fruitCounters := GetFruitCounters()
+
 	for _, card := range validCards {
 		if card.Type == Fruit {
 			for _, element := range card.Elements {
-				fruitCount[element.Variant] += element.Number
+				CountFruit(element.Variant, element.Number, &fruitCounters)
 			}
 		} else if card.Type == Animal {
 			hasAnimal = true
 			animalVariant = card.Variant
 		}
 	}
+	log.Printf("has animal: %t", hasAnimal)
 
 	if hasAnimal {
-		return true, animalVariant, -1
+		animalName := GetAnimalNameByVariant(animalVariant)
+		return true, animalName, ""
 	}
 
-	for variant, count := range fruitCount {
-		if count == game.Rule.FruitNumberToWin {
-			return true, -1, variant
+	for _, counter := range fruitCounters {
+		log.Printf("fruit counter: %d %d", counter.Variant, counter.Count)
+		if counter.Count == game.Rule.FruitNumberToWin {
+			fruitName := GetFruitNameByVariant(counter.Variant)
+			return true, "", fruitName
 		}
 	}
 
-	return false, -1, -1
+	return false, "", ""
 }
 
 func (game *Game) NewRound() {
