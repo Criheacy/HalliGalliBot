@@ -115,7 +115,6 @@ func GameLoop(eventChannel chan GameEvent, messageChannel chan GameMessage) {
 				if game.State == Paused {
 					ticker.Reset(game.Rule.DealInterval)
 					game.State = Running
-
 					RevealCardAndSend(game, messageChannel)
 				}
 			case Terminate:

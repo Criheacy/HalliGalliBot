@@ -155,7 +155,7 @@ func (game *Game) WinCheck() (bool, string, string) {
 			}
 		}
 	}
-	log.Printf("valid cards: %+v", cardLog)
+	log.Printf("valid cards: %s", cardLog)
 
 	hasAnimal := false
 	animalVariant := -1

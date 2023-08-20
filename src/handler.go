@@ -102,7 +102,9 @@ func HandleMessageCreateResponse(body json.RawMessage, eventChannel chan GameEve
 			EventType: Terminate,
 			Param:     nil,
 		}
-		GetContext().ChannelId = ""
+		// GetContext().ChannelId = ""
+		// TODO: logically channelId needs to be cleared here
+		//  but clearing it directly will cause the last message unable to be sent
 	} else {
 		eventChannel <- GameEvent{
 			EventType: RingTheBell,
