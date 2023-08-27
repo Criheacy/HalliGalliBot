@@ -1,8 +1,9 @@
-package main
+package auth
 
 import (
 	"fmt"
 	"gopkg.in/yaml.v3"
+	"halligalli/env"
 	"os"
 	"path"
 	"runtime"
@@ -40,7 +41,7 @@ func LoadTokenFromConfig() error {
 		return err
 	}
 
-	GetContext().Token = Token{
+	env.GetContext().Token = Token{
 		AppID:       conf.AppID,
 		AccessToken: conf.Token,
 	}

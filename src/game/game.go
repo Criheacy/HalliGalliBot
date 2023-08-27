@@ -1,8 +1,11 @@
-package main
+package game
 
 import (
 	"encoding/json"
 	"fmt"
+	"halligalli/assets"
+	"halligalli/auth"
+	"halligalli/env"
 	"log"
 	"math/rand"
 	"os"
@@ -11,7 +14,7 @@ import (
 
 const AssetFilePath = "./asset.json"
 
-type GameRule struct {
+type Rule struct {
 	ValidCardNumber  int
 	FruitNumberToWin int
 	DealInterval     time.Duration
@@ -52,26 +55,26 @@ type AssetMeta struct {
 	Animals []AssetVariant `json:"animals"`
 }
 
-type GameState = int
+type State = int
 
 const (
-	Closed GameState = iota
+	Closed State = iota
 	WaitingForStart
 	Paused
 	Running
 )
 
 type Game struct {
-	Rule          GameRule
+	Rule          Rule
 	Round         int
-	State         GameState
+	State         State
 	Deck          []Card
 	NextCard      int
 	RevealedCards []Card
 }
 
 func LoadAssets() error {
-	content, err := os.ReadFile(GetPath(AssetFilePath))
+	content, err := os.ReadFile(auth.GetPath(AssetFilePath))
 	if err != nil {
 		return err
 	}
@@ -79,19 +82,19 @@ func LoadAssets() error {
 	if err = json.Unmarshal(content, &asset); err != nil {
 		return err
 	}
-	GetContext().Asset = asset
+	env.GetContext().Asset = asset
 	return nil
 }
 
 func (game *Game) Init() {
-	game.Rule = GameRule{
+	game.Rule = Rule{
 		ValidCardNumber:  5,
 		FruitNumberToWin: 5,
 		DealInterval:     7 * time.Second,
 	}
 	game.State = Closed
-	game.Deck = make([]Card, len(GetContext().Asset.Cards))
-	copy(game.Deck, GetContext().Asset.Cards)
+	game.Deck = make([]Card, len(env.GetContext().Asset.Cards))
+	copy(game.Deck, env.GetContext().Asset.Cards)
 	game.ShuffleDeck()
 	game.NextCard = 0
 	game.RevealedCards = make([]Card, 0)
@@ -124,8 +127,8 @@ type Counter struct {
 }
 
 func GetFruitCounters() []Counter {
-	result := make([]Counter, len(GetContext().Asset.Meta.Fruits))
-	for index, fruit := range GetContext().Asset.Meta.Fruits {
+	result := make([]Counter, len(env.GetContext().Asset.Meta.Fruits))
+	for index, fruit := range env.GetContext().Asset.Meta.Fruits {
 		result[index].Variant = fruit.Variant
 		result[index].Count = 0
 	}
@@ -148,10 +151,10 @@ func (game *Game) WinCheck() (bool, string, string) {
 	var cardLog string
 	for _, card := range validCards {
 		if card.Type == Animal {
-			cardLog += fmt.Sprintf("[%s] ", GetAnimalNameByVariant(card.Variant))
+			cardLog += fmt.Sprintf("[%s] ", assets.GetAnimalNameByVariant(card.Variant))
 		} else {
 			for _, element := range card.Elements {
-				cardLog += fmt.Sprintf("[%s x%d] ", GetFruitNameByVariant(element.Variant), element.Number)
+				cardLog += fmt.Sprintf("[%s x%d] ", assets.GetFruitNameByVariant(element.Variant), element.Number)
 			}
 		}
 	}
@@ -174,14 +177,14 @@ func (game *Game) WinCheck() (bool, string, string) {
 	log.Printf("has animal: %t", hasAnimal)
 
 	if hasAnimal {
-		animalName := GetAnimalNameByVariant(animalVariant)
+		animalName := assets.GetAnimalNameByVariant(animalVariant)
 		return true, animalName, ""
 	}
 
 	for _, counter := range fruitCounters {
 		log.Printf("fruit counter: %d %d", counter.Variant, counter.Count)
 		if counter.Count == game.Rule.FruitNumberToWin {
-			fruitName := GetFruitNameByVariant(counter.Variant)
+			fruitName := assets.GetFruitNameByVariant(counter.Variant)
 			return true, "", fruitName
 		}
 	}

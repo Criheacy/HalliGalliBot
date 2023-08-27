@@ -1,7 +1,9 @@
-package main
+package assets
+
+import "halligalli/env"
 
 func GetAnimalNameByVariant(variant int) string {
-	for _, animal := range GetContext().Asset.Meta.Animals {
+	for _, animal := range env.GetContext().Asset.Meta.Animals {
 		if animal.Variant == variant {
 			return animal.Name
 		}
@@ -10,7 +12,7 @@ func GetAnimalNameByVariant(variant int) string {
 }
 
 func GetFruitNameByVariant(variant int) string {
-	for _, fruit := range GetContext().Asset.Meta.Fruits {
+	for _, fruit := range env.GetContext().Asset.Meta.Fruits {
 		if fruit.Variant == variant {
 			return fruit.Name
 		}

@@ -1,8 +1,10 @@
-package main
+package server
 
 import (
 	"encoding/json"
 	"github.com/gorilla/websocket"
+	"halligalli/env"
+	"halligalli/model"
 	"log"
 )
 
@@ -12,7 +14,7 @@ func GetWebsocketUrl() (string, error) {
 		log.Println("ERROR unable to get websocket url", err)
 		return "", err
 	}
-	var gatewayResp GatewayBody
+	var gatewayResp model.GatewayBody
 	if err = json.Unmarshal(bodyRaw, &gatewayResp); err != nil {
 		log.Println("ERROR parsing gateway response", err)
 		return "", err
@@ -30,6 +32,6 @@ func ConnectToWebsocketServer() error {
 		log.Println("ERROR connecting to :", err)
 		return err
 	}
-	GetContext().Connection = connection
+	env.GetContext().Connection = connection
 	return nil
 }

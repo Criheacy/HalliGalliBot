@@ -1,73 +1,74 @@
-package main
+package game
 
 import (
+	"halligalli/model"
 	"log"
 	"time"
 )
 
-type GameEventType = int
+type EventType = int
 
-type GameEvent struct {
-	EventType GameEventType
+type Event struct {
+	EventType EventType
 	Param     any
 }
 
 const (
-	Initiate GameEventType = iota
+	Initiate EventType = iota
 	Start
 	RingTheBell
 	Continue
 	Terminate
 )
 
-type GameMessageType = int
+type MessageType = int
 
-type GameMessage struct {
-	MessageType GameMessageType
+type Message struct {
+	MessageType MessageType
 	Param       any
 }
 
 const (
-	ShowGameRule GameMessageType = iota
+	ShowGameRule MessageType = iota
 	CardRevealed
 	PlayerWin
 	FakeRing
-	GameTerminated
+	Terminated
 )
 
 type RoundStatus struct {
 	IsWin      bool
-	Player     User
+	Player     model.User
 	AnimalName string
 	FruitName  string
 }
 
-func InitiateGame(game *Game, messageChannel chan GameMessage) {
-	messageChannel <- GameMessage{
+func InitiateGame(game *Game, messageChannel chan Message) {
+	messageChannel <- Message{
 		MessageType: ShowGameRule,
 		Param:       nil,
 	}
 	game.State = WaitingForStart
 }
 
-func RevealCardAndSend(game *Game, messageChannel chan GameMessage) {
+func RevealCardAndSend(game *Game, messageChannel chan Message) {
 	card := game.RevealNextCard()
 	log.Printf("card revealed: %+v", card)
-	messageChannel <- GameMessage{
+	messageChannel <- Message{
 		MessageType: CardRevealed,
 		Param:       card,
 	}
 }
 
-func TerminateGame(game *Game, messageChannel chan GameMessage) {
+func TerminateGame(game *Game, messageChannel chan Message) {
 	game.State = Closed
-	messageChannel <- GameMessage{
-		MessageType: GameTerminated,
+	messageChannel <- Message{
+		MessageType: Terminated,
 		Param:       nil,
 	}
 }
 
-func GameLoop(eventChannel chan GameEvent, messageChannel chan GameMessage) {
+func MainLoop(eventChannel chan Event, messageChannel chan Message) {
 	game := &Game{}
 	game.Init()
 	ticker := time.NewTicker(game.Rule.DealInterval)
@@ -94,18 +95,18 @@ func GameLoop(eventChannel chan GameEvent, messageChannel chan GameMessage) {
 					isWin, animalName, fruitName := game.WinCheck()
 					roundStatus := RoundStatus{
 						IsWin:      isWin,
-						Player:     event.Param.(User),
+						Player:     event.Param.(model.User),
 						AnimalName: animalName,
 						FruitName:  fruitName,
 					}
 					if isWin {
-						messageChannel <- GameMessage{
+						messageChannel <- Message{
 							MessageType: PlayerWin,
 							Param:       roundStatus,
 						}
 						game.NewRound()
 					} else {
-						messageChannel <- GameMessage{
+						messageChannel <- Message{
 							MessageType: FakeRing,
 							Param:       roundStatus,
 						}

@@ -1,17 +1,20 @@
-package main
+package env
 
 import (
 	"fmt"
 	"github.com/gorilla/websocket"
+	"halligalli/auth"
+	"halligalli/game"
+	"halligalli/model"
 	"sync"
 )
 
 var lock = &sync.Mutex{}
 
 type Context struct {
-	User           User
-	Token          Token
-	Asset          Asset
+	User           model.User
+	Token          auth.Token
+	Asset          game.Asset
 	ChannelId      string
 	ReplyMessageId string
 	Connection     *websocket.Conn

@@ -1,13 +1,15 @@
-package main
+package server
 
 import (
 	"encoding/json"
 	"fmt"
+	"halligalli/env"
+	"halligalli/model"
 	"log"
 )
 
-func SendMessage(body *MessageSendBody) error {
-	url := fmt.Sprintf("/channels/%s/messages", GetContext().ChannelId)
+func SendMessage(body *model.MessageSendBody) error {
+	url := fmt.Sprintf("/channels/%s/messages", env.GetContext().ChannelId)
 	bodyRaw, err := json.Marshal(body)
 	if err != nil {
 		return err
