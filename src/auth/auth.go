@@ -3,6 +3,7 @@ package auth
 import (
 	"fmt"
 	"gopkg.in/yaml.v3"
+	"halligalli/common"
 	"halligalli/env"
 	"os"
 	"path"
@@ -11,12 +12,7 @@ import (
 
 const ConfigFilePath = "./config.yaml"
 
-type Token struct {
-	AppID       uint64
-	AccessToken string
-}
-
-func (token Token) GetString() string {
+func GetTokenString(token common.Token) string {
 	return fmt.Sprintf("%s %v.%s", "Bot", token.AppID, token.AccessToken)
 }
 
@@ -41,7 +37,7 @@ func LoadTokenFromConfig() error {
 		return err
 	}
 
-	env.GetContext().Token = Token{
+	env.GetContext().Token = common.Token{
 		AppID:       conf.AppID,
 		AccessToken: conf.Token,
 	}

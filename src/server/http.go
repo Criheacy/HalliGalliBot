@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"halligalli/auth"
 	"halligalli/env"
 	"io"
 	"net/http"
@@ -15,7 +16,7 @@ func HttpGet(endpoint string) ([]byte, error) {
 	}
 
 	token := env.GetContext().Token
-	req.Header.Set("Authorization", token.GetString())
+	req.Header.Set("Authorization", auth.GetTokenString(token))
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -42,7 +43,7 @@ func HttpPost(endpoint string, reqBody []byte) ([]byte, error) {
 	}
 
 	token := env.GetContext().Token
-	req.Header.Set("Authorization", token.GetString())
+	req.Header.Set("Authorization", auth.GetTokenString(token))
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := client.Do(req)
 	if err != nil {

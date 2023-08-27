@@ -3,8 +3,7 @@ package env
 import (
 	"fmt"
 	"github.com/gorilla/websocket"
-	"halligalli/auth"
-	"halligalli/game"
+	"halligalli/common"
 	"halligalli/model"
 	"sync"
 	"time"
@@ -14,9 +13,9 @@ var lock = &sync.Mutex{}
 
 type Context struct {
 	User           model.User
-	Token          auth.Token
-	Asset          game.Asset
-	GameRule       game.Rule
+	Token          common.Token
+	Asset          common.Asset
+	GameRule       common.Rule
 	ReplyMessageId string
 	Connection     *websocket.Conn
 }
@@ -24,7 +23,7 @@ type Context struct {
 var instance *Context
 
 func OnInit(context *Context) {
-	context.GameRule = game.Rule{
+	context.GameRule = common.Rule{
 		ValidCardNumber:  5,
 		FruitNumberToWin: 5,
 		DealInterval:     7 * time.Second,

@@ -1,53 +1,13 @@
 package game
 
 import (
-	"encoding/json"
-	"fmt"
 	"halligalli/assets"
-	"halligalli/auth"
+	"halligalli/common"
 	"halligalli/env"
 	"log"
 	"math/rand"
-	"os"
 	"time"
 )
-
-const AssetFilePath = "./asset.json"
-
-type Card struct {
-	Image    string        `json:"image"`
-	Type     CardType      `json:"type"`
-	Variant  int           `json:"variant"`
-	Repeat   int           `json:"repeat"`
-	Elements []CardElement `json:"elements"`
-}
-
-type CardType = string
-
-const (
-	Fruit  CardType = "fruit"
-	Animal CardType = "animal"
-)
-
-type CardElement struct {
-	Variant int `json:"variant"`
-	Number  int `json:"number"`
-}
-
-type Asset struct {
-	Meta  AssetMeta `json:"meta"`
-	Cards []Card    `json:"cards"`
-}
-
-type AssetVariant struct {
-	Name    string `json:"name"`
-	Variant int    `json:"variant"`
-}
-
-type AssetMeta struct {
-	Fruits  []AssetVariant `json:"fruits"`
-	Animals []AssetVariant `json:"animals"`
-}
 
 type State = int
 
@@ -62,41 +22,22 @@ type Game struct {
 	ChannelId     string
 	Round         int
 	State         State
-	Deck          []Card
+	Deck          []common.Card
 	NextCardIndex int
 	RevealTimer   *time.Timer
-	RevealedCards []Card
-}
-
-type Rule struct {
-	ValidCardNumber  int
-	FruitNumberToWin int
-	DealInterval     time.Duration
-}
-
-func LoadAssets() error {
-	content, err := os.ReadFile(auth.GetPath(AssetFilePath))
-	if err != nil {
-		return err
-	}
-	var asset Asset
-	if err = json.Unmarshal(content, &asset); err != nil {
-		return err
-	}
-	env.GetContext().Asset = asset
-	return nil
+	RevealedCards []common.Card
 }
 
 func (game *Game) Init(channelId string) {
 	game.ChannelId = channelId
 	game.State = Closed
-	game.Deck = make([]Card, len(env.GetContext().Asset.Cards))
+	game.Deck = make([]common.Card, len(env.GetContext().Asset.Cards))
 	copy(game.Deck, env.GetContext().Asset.Cards)
 	game.ShuffleDeck()
 	game.NextCardIndex = 0
 	game.RevealTimer = time.NewTimer(env.GetContext().GameRule.DealInterval)
 	game.RevealTimer.Stop()
-	game.RevealedCards = make([]Card, 0)
+	game.RevealedCards = make([]common.Card, 0)
 }
 
 func (game *Game) ShuffleDeck() {
@@ -106,14 +47,14 @@ func (game *Game) ShuffleDeck() {
 	}
 }
 
-func (game *Game) RevealNextCard() Card {
+func (game *Game) RevealNextCard() common.Card {
 	if game.NextCardIndex >= len(game.Deck) {
 		game.NextCardIndex = 0
 		game.ShuffleDeck()
 	}
 	card := game.Deck[game.NextCardIndex]
 	if game.RevealedCards == nil {
-		game.RevealedCards = make([]Card, 0)
+		game.RevealedCards = make([]common.Card, 0)
 	}
 	game.RevealedCards = append(game.RevealedCards, card)
 	game.NextCardIndex += 1
@@ -144,31 +85,18 @@ func CountFruit(variant int, number int, fruitCounters *[]Counter) {
 
 // WinCheck returns (isWin, animalName, fruitName)
 func (game *Game) WinCheck() (bool, string, string) {
-	sliceFrom := maxInt(0, len(game.RevealedCards)-env.GetContext().GameRule.ValidCardNumber)
-	validCards := game.RevealedCards[sliceFrom:]
-
-	var cardLog string
-	for _, card := range validCards {
-		if card.Type == Animal {
-			cardLog += fmt.Sprintf("[%s] ", assets.GetAnimalNameByVariant(card.Variant))
-		} else {
-			for _, element := range card.Elements {
-				cardLog += fmt.Sprintf("[%s x%d] ", assets.GetFruitNameByVariant(element.Variant), element.Number)
-			}
-		}
-	}
-	log.Printf("valid cards: %s", cardLog)
+	validCards := game.GetValidCards()
 
 	hasAnimal := false
 	animalVariant := -1
 	fruitCounters := GetFruitCounters()
 
 	for _, card := range validCards {
-		if card.Type == Fruit {
+		if card.Type == common.Fruit {
 			for _, element := range card.Elements {
 				CountFruit(element.Variant, element.Number, &fruitCounters)
 			}
-		} else if card.Type == Animal {
+		} else if card.Type == common.Animal {
 			hasAnimal = true
 			animalVariant = card.Variant
 		}
@@ -189,6 +117,12 @@ func (game *Game) WinCheck() (bool, string, string) {
 	}
 
 	return false, "", ""
+}
+
+func (game *Game) GetValidCards() []common.Card {
+	sliceFrom := maxInt(0, len(game.RevealedCards)-env.GetContext().GameRule.ValidCardNumber)
+	validCards := game.RevealedCards[sliceFrom:]
+	return validCards
 }
 
 func (game *Game) NewRound() {

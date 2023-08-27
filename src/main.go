@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/gorilla/websocket"
+	"halligalli/assets"
 	"halligalli/auth"
 	"halligalli/env"
 	"halligalli/game"
@@ -19,7 +20,7 @@ func main() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
-	err := game.LoadAssets()
+	err := assets.LoadAssets()
 	if err != nil {
 		log.Panicln("ERROR loading assets", err)
 	}
@@ -42,22 +43,22 @@ func main() {
 		}
 	}(env.GetContext().Connection)
 
-	ticker := time.NewTicker(time.Duration(model.DefaultHeartbeatIntervalMillis) * time.Millisecond)
+	heartbeatTicker := time.NewTicker(time.Duration(model.DefaultHeartbeatIntervalMillis) * time.Millisecond)
 	defer func() {
-		if ticker != nil {
-			ticker.Stop()
+		if heartbeatTicker != nil {
+			heartbeatTicker.Stop()
 		}
 	}()
 
 	lastMessageId := model.DefaultLastMessageId
 
-	eventChannel := make(chan game.Event, 8)
-	messageChannel := make(chan game.Message, 8)
+	eventChannel := make(chan game.Event, 32)
+	messageChannel := make(chan game.Message, 32)
 
 	go game.MainLoop(eventChannel, messageChannel)
 	go server.HandleGameMessage(messageChannel)
 
-	done := make(chan struct{})
+	done := make(chan bool)
 	go func() {
 		defer close(done)
 		for {
@@ -78,7 +79,7 @@ func main() {
 
 			switch raw.Op {
 			case model.Hello:
-				if ticker, err = server.HandleHelloResponse(raw.Body); err != nil {
+				if heartbeatTicker, err = server.HandleHelloResponse(raw.Body); err != nil {
 					continue
 				}
 			case model.HeartbeatAck:
@@ -104,7 +105,7 @@ func main() {
 		select {
 		case <-done:
 			return
-		case _ = <-ticker.C:
+		case _ = <-heartbeatTicker.C:
 			var heartbeatReq model.HeartbeatBody
 			if lastMessageId != model.DefaultLastMessageId {
 				heartbeatReq.LastMessageId = strconv.Itoa(lastMessageId)

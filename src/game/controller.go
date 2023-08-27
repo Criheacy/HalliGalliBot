@@ -20,6 +20,8 @@ const (
 	RingTheBell
 	Continue
 	Terminate
+
+	Debug
 )
 
 type MessageType = int
@@ -36,6 +38,7 @@ const (
 	PlayerWin
 	FakeRing
 	Terminated
+	ExplainWhy
 )
 
 type RoundStatus struct {
@@ -131,6 +134,14 @@ func MainLoop(eventChannel chan Event, messageChannel chan Message) {
 				if game.State == WaitingForStart || game.State == Running || game.State == Paused {
 					game.RevealTimer.Stop()
 					TerminateGame(game, messageChannel)
+				}
+			case Debug:
+				if game.State == Paused {
+					messageChannel <- Message{
+						MessageType: ExplainWhy,
+						ChannelId:   game.ChannelId,
+						Param:       game.GetValidCards(),
+					}
 				}
 			}
 		case tickerEvent := <-tickerChannel:
