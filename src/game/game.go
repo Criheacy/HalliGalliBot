@@ -14,12 +14,6 @@ import (
 
 const AssetFilePath = "./asset.json"
 
-type Rule struct {
-	ValidCardNumber  int
-	FruitNumberToWin int
-	DealInterval     time.Duration
-}
-
 type Card struct {
 	Image    string        `json:"image"`
 	Type     CardType      `json:"type"`
@@ -65,12 +59,19 @@ const (
 )
 
 type Game struct {
-	Rule          Rule
+	ChannelId     string
 	Round         int
 	State         State
 	Deck          []Card
-	NextCard      int
+	NextCardIndex int
+	RevealTimer   *time.Timer
 	RevealedCards []Card
+}
+
+type Rule struct {
+	ValidCardNumber  int
+	FruitNumberToWin int
+	DealInterval     time.Duration
 }
 
 func LoadAssets() error {
@@ -86,17 +87,15 @@ func LoadAssets() error {
 	return nil
 }
 
-func (game *Game) Init() {
-	game.Rule = Rule{
-		ValidCardNumber:  5,
-		FruitNumberToWin: 5,
-		DealInterval:     7 * time.Second,
-	}
+func (game *Game) Init(channelId string) {
+	game.ChannelId = channelId
 	game.State = Closed
 	game.Deck = make([]Card, len(env.GetContext().Asset.Cards))
 	copy(game.Deck, env.GetContext().Asset.Cards)
 	game.ShuffleDeck()
-	game.NextCard = 0
+	game.NextCardIndex = 0
+	game.RevealTimer = time.NewTimer(env.GetContext().GameRule.DealInterval)
+	game.RevealTimer.Stop()
 	game.RevealedCards = make([]Card, 0)
 }
 
@@ -108,16 +107,16 @@ func (game *Game) ShuffleDeck() {
 }
 
 func (game *Game) RevealNextCard() Card {
-	if game.NextCard >= len(game.Deck) {
-		game.NextCard = 0
+	if game.NextCardIndex >= len(game.Deck) {
+		game.NextCardIndex = 0
 		game.ShuffleDeck()
 	}
-	card := game.Deck[game.NextCard]
+	card := game.Deck[game.NextCardIndex]
 	if game.RevealedCards == nil {
 		game.RevealedCards = make([]Card, 0)
 	}
 	game.RevealedCards = append(game.RevealedCards, card)
-	game.NextCard += 1
+	game.NextCardIndex += 1
 	return card
 }
 
@@ -145,7 +144,7 @@ func CountFruit(variant int, number int, fruitCounters *[]Counter) {
 
 // WinCheck returns (isWin, animalName, fruitName)
 func (game *Game) WinCheck() (bool, string, string) {
-	sliceFrom := maxInt(0, len(game.RevealedCards)-game.Rule.ValidCardNumber)
+	sliceFrom := maxInt(0, len(game.RevealedCards)-env.GetContext().GameRule.ValidCardNumber)
 	validCards := game.RevealedCards[sliceFrom:]
 
 	var cardLog string
@@ -183,7 +182,7 @@ func (game *Game) WinCheck() (bool, string, string) {
 
 	for _, counter := range fruitCounters {
 		log.Printf("fruit counter: %d %d", counter.Variant, counter.Count)
-		if counter.Count == game.Rule.FruitNumberToWin {
+		if counter.Count == env.GetContext().GameRule.FruitNumberToWin {
 			fruitName := assets.GetFruitNameByVariant(counter.Variant)
 			return true, "", fruitName
 		}

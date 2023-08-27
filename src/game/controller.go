@@ -1,15 +1,16 @@
 package game
 
 import (
+	"halligalli/env"
 	"halligalli/model"
 	"log"
-	"time"
 )
 
 type EventType = int
 
 type Event struct {
 	EventType EventType
+	ChannelId string
 	Param     any
 }
 
@@ -25,6 +26,7 @@ type MessageType = int
 
 type Message struct {
 	MessageType MessageType
+	ChannelId   string
 	Param       any
 }
 
@@ -43,7 +45,11 @@ type RoundStatus struct {
 	FruitName  string
 }
 
-func InitiateGame(game *Game, messageChannel chan Message) {
+type RevealTickerEvent struct {
+	Game *Game
+}
+
+func Initiated(game *Game, messageChannel chan Message) {
 	messageChannel <- Message{
 		MessageType: ShowGameRule,
 		Param:       nil,
@@ -69,28 +75,31 @@ func TerminateGame(game *Game, messageChannel chan Message) {
 }
 
 func MainLoop(eventChannel chan Event, messageChannel chan Message) {
-	game := &Game{}
-	game.Init()
-	ticker := time.NewTicker(game.Rule.DealInterval)
-	ticker.Stop()
+	gameInstances := make(map[string]*Game)
+	tickerChannel := make(chan RevealTickerEvent, 32)
 	for {
 		select {
 		case event := <-eventChannel:
+			game := gameInstances[event.ChannelId]
+			if game == nil {
+				game = &Game{}
+				game.Init(event.ChannelId)
+				gameInstances[event.ChannelId] = game
+			}
 			switch event.EventType {
 			case Initiate:
 				if game.State == Closed || game.State == WaitingForStart {
-					InitiateGame(game, messageChannel)
+					Initiated(game, messageChannel)
 				}
 			case Start:
 				if game.State == WaitingForStart {
 					game.State = Running
-					ticker.Reset(game.Rule.DealInterval)
-
 					RevealCardAndSend(game, messageChannel)
+					go WaitForNextCard(game, tickerChannel)
 				}
 			case RingTheBell:
 				if game.State == Running {
-					ticker.Stop()
+					game.RevealTimer.Stop()
 					game.State = Paused
 					isWin, animalName, fruitName := game.WinCheck()
 					roundStatus := RoundStatus{
@@ -114,20 +123,35 @@ func MainLoop(eventChannel chan Event, messageChannel chan Message) {
 				}
 			case Continue:
 				if game.State == Paused {
-					ticker.Reset(game.Rule.DealInterval)
 					game.State = Running
 					RevealCardAndSend(game, messageChannel)
+					go WaitForNextCard(game, tickerChannel)
 				}
 			case Terminate:
 				if game.State == WaitingForStart || game.State == Running || game.State == Paused {
-					ticker.Stop()
+					game.RevealTimer.Stop()
 					TerminateGame(game, messageChannel)
 				}
 			}
-		case <-ticker.C:
+		case tickerEvent := <-tickerChannel:
+			game := tickerEvent.Game
+			RevealCardAndSend(game, messageChannel)
+			go WaitForNextCard(game, tickerChannel)
+		}
+	}
+}
+
+func WaitForNextCard(game *Game, tickerChannel chan RevealTickerEvent) {
+	game.RevealTimer.Reset(env.GetContext().GameRule.DealInterval)
+	for {
+		select {
+		case <-game.RevealTimer.C:
 			if game.State == Running {
-				RevealCardAndSend(game, messageChannel)
+				tickerChannel <- RevealTickerEvent{
+					Game: game,
+				}
 			}
+			break
 		}
 	}
 }

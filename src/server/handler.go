@@ -72,45 +72,35 @@ func HandleMessageCreateResponse(body json.RawMessage, eventChannel chan game.Ev
 		return nil
 	}
 
-	if env.GetContext().ChannelId == "" {
-		env.GetContext().ChannelId = messageCreateBody.ChannelId
-	}
-
-	if env.GetContext().ChannelId != messageCreateBody.ChannelId {
-		// TODO: notify the user in other channel
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-
 	env.GetContext().ReplyMessageId = messageCreateBody.Id
 	if strings.Contains(messageCreateBody.Content, "game") {
 		eventChannel <- game.Event{
 			EventType: game.Initiate,
+			ChannelId: messageCreateBody.ChannelId,
 			Param:     nil,
 		}
 	} else if strings.Contains(messageCreateBody.Content, "start") {
 		eventChannel <- game.Event{
 			EventType: game.Start,
+			ChannelId: messageCreateBody.ChannelId,
 			Param:     nil,
 		}
 	} else if strings.Contains(messageCreateBody.Content, "continue") {
 		eventChannel <- game.Event{
 			EventType: game.Continue,
+			ChannelId: messageCreateBody.ChannelId,
 			Param:     nil,
 		}
 	} else if strings.Contains(messageCreateBody.Content, "stop") {
 		eventChannel <- game.Event{
 			EventType: game.Terminate,
+			ChannelId: messageCreateBody.ChannelId,
 			Param:     nil,
 		}
-		// GetContext().ChannelId = ""
-		// TODO: logically channelId needs to be cleared here
-		//  but clearing it directly will cause the last message unable to be sent
 	} else {
 		eventChannel <- game.Event{
 			EventType: game.RingTheBell,
+			ChannelId: messageCreateBody.ChannelId,
 			Param:     messageCreateBody.Author,
 		}
 	}
@@ -163,7 +153,7 @@ func HandleGameMessage(messageChannel chan game.Message) {
 				}
 			}
 			messageBody.ReplyMessageId = env.GetContext().ReplyMessageId
-			err := SendMessage(&messageBody)
+			err := SendMessage(message.ChannelId, &messageBody)
 			if err != nil {
 				log.Println("ERROR sending message", err)
 				continue
